@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ComicCraft</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;min-height:100vh;background:linear-gradient(135deg,#d8ecff,#f7f1ff 45%,#fff6df);color:#233044}
+    .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
+    .card{width:min(760px,100%);background:rgba(255,255,255,.95);border-radius:24px;padding:34px;box-shadow:0 18px 50px rgba(35,48,68,.15)}
+    h1{margin:0 0 8px;font-size:42px}.sub{margin:0 0 26px;color:#617089}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.full{grid-column:1/-1}
+    label{display:block;font-weight:700;margin-bottom:7px}.field{width:100%;border:1px solid #ccd6e5;border-radius:12px;padding:12px 14px;font-size:15px;background:#fff}
+    textarea.field{min-height:130px;resize:vertical}.button{margin-top:20px;width:100%;padding:14px;border:0;border-radius:12px;font-size:16px;font-weight:700;background:#2f6fed;color:#fff;cursor:pointer}.button:hover{filter:brightness(.96)}
+    .note{margin-top:14px;font-size:13px;color:#6f7e93}.pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef4ff;color:#2f6fed;font-size:12px;font-weight:700}
+    @media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:auto}h1{font-size:34px}}
+  </style>
+</head>
+<body>
+<div class="hero"><div class="card">
+  <span class="pill">AI COMIC STORY CREATOR</span>
+  <h1>Create Your Comic</h1>
+  <p class="sub">Turn one story idea into five illustrated comic panels, narration, dialogue, and a PDF.</p>
+  <form method="post" action="/generate">
+    <div class="grid">
+      <div class="full"><label for="prompt">Story Prompt</label><textarea class="field" id="prompt" name="prompt" required placeholder="A brave fox exploring an enchanted forest..."></textarea></div>
+      <div><label for="character_name">Main Character Name</label><input class="field" id="character_name" name="character_name" value="Aria" required></div>
+      <div><label for="setting">Setting</label><select class="field" id="setting" name="setting"><option>forest</option><option>school</option><option>city</option><option>space</option><option>village</option></select></div>
+      <div><label for="tone">Story Tone</label><select class="field" id="tone" name="tone"><option>light-hearted</option><option selected>dramatic</option><option>poetic</option><option>funny</option></select></div>
+      <div><label for="style">Art Style</label><select class="field" id="style" name="style"><option>anime</option><option>pixel art</option><option selected>comic book</option><option>realistic</option></select></div>
+    </div>
+    <button class="button" type="submit">Generate My Comic</button>
+  </form>
+  <div class="note">Tip: the first launch can run in demo mode. Add your API keys in <code>.env</code> when you are ready for AI generation.</div>
+</div></div>
+</body>
+</html>

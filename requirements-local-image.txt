@@ -1,0 +1,7 @@
+# Optional dependencies for IMAGE_PROVIDER=diffusers
+-r requirements.txt
+torch>=2.6
+transformers>=4.50
+diffusers>=0.32
+accelerate>=1.2
+safetensors>=0.5
