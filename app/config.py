@@ -39,13 +39,23 @@ DEMO_MODE = os.getenv("DEMO_MODE", "true").strip().lower() in {
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
 
+# Detect Serverless environments (Vercel, AWS Lambda, Netlify Functions, etc.)
+IS_SERVERLESS = bool(
+    os.getenv("VERCEL")
+    or os.getenv("VERCEL_ENV")
+    or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+    or os.getenv("LAMBDA_TASK_ROOT")
+    or os.getenv("NOW_REGION")
+)
+
 
 def _get_writable_dir(subfolder: str) -> Path:
-    """Return a writable directory.
-    
-    Falls back gracefully to system temp directory in read-only serverless environments
-    like Vercel and AWS Lambda.
-    """
+    """Return a directory guaranteed to be writable on any platform."""
+    if IS_SERVERLESS:
+        tmp_dir = Path(tempfile.gettempdir()) / "comiccraft" / subfolder
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        return tmp_dir
+
     local_dir = STATIC_DIR / subfolder
     try:
         local_dir.mkdir(parents=True, exist_ok=True)

@@ -1,9 +1,10 @@
 {
+  "version": 2,
   "maxDuration": 60,
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/app/main.py"
+      "destination": "/api/index.py"
     }
   ]
 }
