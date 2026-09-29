@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import re
 from io import BytesIO
 from pathlib import Path
@@ -16,6 +17,18 @@ from .config import (
 )
 
 _PIPELINE = None
+
+
+class GeneratedImage(dict):
+    """Dict containing image metadata and Base64 data URL, with str compatibility."""
+    def __init__(self, path: str, data_url: str, filename: str):
+        super().__init__(path=path, data_url=data_url, filename=filename)
+        self.path = path
+        self.data_url = data_url
+        self.filename = filename
+
+    def __str__(self) -> str:
+        return self.path
 
 
 def sanitize_filename(text: str) -> str:
@@ -37,7 +50,7 @@ def _load_font(size: int):
     return ImageFont.load_default()
 
 
-def _demo_image(prompt: str, filename: str) -> str:
+def _demo_image(prompt: str, filename: str) -> GeneratedImage:
     image = Image.new("RGB", (768, 512), (235, 242, 250))
     draw = ImageDraw.Draw(image)
     title_font = _load_font(28)
@@ -47,9 +60,18 @@ def _demo_image(prompt: str, filename: str) -> str:
     text = prompt[:420]
     draw.multiline_text((55, 120), text, font=body_font, fill=(50, 60, 70), spacing=8)
     draw.text((55, 420), "Set IMAGE_PROVIDER=hf or diffusers for AI images.", font=body_font, fill=(70, 80, 95))
+    
     path = PANELS_DIR / filename
-    image.save(path, format="PNG")
-    return str(path)
+    try:
+        image.save(path, format="PNG")
+    except Exception:
+        pass
+
+    buf = BytesIO()
+    image.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    data_url = f"data:image/png;base64,{b64}"
+    return GeneratedImage(path=str(path), data_url=data_url, filename=filename)
 
 
 def _hf_image(prompt: str):
@@ -93,8 +115,8 @@ def _diffusers_image(prompt: str):
     ).images[0]
 
 
-def generate_image(prompt: str, filename: str | None = None) -> str:
-    """Generate a comic panel image and return its static file path."""
+def generate_image(prompt: str, filename: str | None = None) -> GeneratedImage:
+    """Generate a comic panel image and return its static file path & base64 data URI."""
     if not filename:
         filename = f"{sanitize_filename(prompt)}.png"
     elif not filename.lower().endswith(".png"):
@@ -113,5 +135,13 @@ def generate_image(prompt: str, filename: str | None = None) -> str:
         )
 
     path = PANELS_DIR / filename
-    image.save(path, format="PNG")
-    return str(path)
+    try:
+        image.save(path, format="PNG")
+    except Exception:
+        pass
+
+    buf = BytesIO()
+    image.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    data_url = f"data:image/png;base64,{b64}"
+    return GeneratedImage(path=str(path), data_url=data_url, filename=filename)

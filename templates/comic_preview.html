@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your Comic Preview</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#253148}.wrap{max-width:980px;margin:0 auto;padding:28px 18px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}h1{margin:0}.actions{display:flex;gap:10px}.btn{display:inline-block;text-decoration:none;border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}.primary{background:#2f6fed;color:#fff}.ghost{background:#fff;color:#2f6fed;border:1px solid #ccd6e5}.panel{background:#fff;border-radius:20px;padding:20px;margin-top:20px;box-shadow:0 10px 30px rgba(35,48,68,.08)}.panel h2{margin:0 0 12px}.panel img{width:100%;max-width:760px;display:block;margin:0 auto 14px;border-radius:14px}.scene{color:#63718a;font-style:italic}.story{white-space:pre-wrap;line-height:1.6}.prompt{font-size:13px;background:#f6f8fb;border-radius:10px;padding:10px;color:#59677f;white-space:pre-wrap}.download{margin-top:24px;text-align:center}.footer{margin-top:20px;text-align:center}
+    *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#253148}.wrap{max-width:980px;margin:0 auto;padding:28px 18px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}h1{margin:0}.actions{display:flex;gap:10px}.btn{display:inline-block;text-decoration:none;border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}.primary{background:#2f6fed;color:#fff}.ghost{background:#fff;color:#2f6fed;border:1px solid #ccd6e5}.panel{background:#fff;border-radius:20px;padding:20px;margin-top:20px;box-shadow:0 10px 30px rgba(35,48,68,.08)}.panel h2{margin:0 0 12px}.panel img{width:100%;max-width:760px;display:block;margin:0 auto 14px;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.08)}.scene{color:#63718a;font-style:italic}.story{white-space:pre-wrap;line-height:1.6}.prompt{font-size:13px;background:#f6f8fb;border-radius:10px;padding:10px;color:#59677f;white-space:pre-wrap}.download{margin-top:24px;text-align:center}.footer{margin-top:20px;text-align:center}
   </style>
 </head>
 <body>
@@ -14,7 +14,11 @@
   {% for panel in layout %}
   <section class="panel">
     <h2>Panel {{ panel.panel }}: {{ panel.title }}</h2>
+    {% if panel.image_data_url %}
+    <img src="{{ panel.image_data_url }}" alt="Panel {{ panel.panel }}">
+    {% else %}
     <img src="/static/panels/{{ panel.image_path.split('\\')[-1].split('/')[-1] }}" alt="Panel {{ panel.panel }}">
+    {% endif %}
     <p class="scene">{{ panel.scene_description }}</p>
     <div class="story">{{ panel.text }}</div>
     <details style="margin-top:14px"><summary>Image Prompt Reference</summary><div class="prompt">{{ panel.image_prompt }}</div></details>

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import tempfile
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -8,7 +10,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from .config import EXPORTS_DIR, TEMPLATES_DIR
+from .config import BASE_DIR, EXPORTS_DIR, PANELS_DIR, TEMPLATES_DIR
 from .exporters import save_pdf
 from .gemini_flash import generate_outline
 from .gemini_pro import generate_story
@@ -42,7 +44,11 @@ def _generate_comic(full_prompt: str):
         raise ValueError("Invalid outline returned from the AI model.")
 
     story = generate_story(outline)
-    images = [generate_image(panel["image_prompt"], f"panel_{panel['panel']}.png") for panel in outline]
+    uid = uuid.uuid4().hex[:8]
+    images = [
+        generate_image(panel["image_prompt"], f"panel_{panel['panel']}_{uid}.png")
+        for panel in outline
+    ]
     layout = build_comic_layout(images, story, outline)
     pdf_path = save_pdf(layout)
     return layout, pdf_path
@@ -51,9 +57,9 @@ def _generate_comic(full_prompt: str):
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse(
-    request=request,
-    name="index.html"
-)
+        request=request,
+        name="index.html",
+    )
 
 
 @router.post("/generate", response_class=HTMLResponse)
@@ -104,28 +110,50 @@ async def generate_comic_json(payload: PromptRequest):
 @router.get("/download/{filename}")
 async def download_pdf(filename: str):
     safe_name = Path(filename).name
-    file_path = EXPORTS_DIR / safe_name
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="PDF file not found.")
-    return FileResponse(
-        path=file_path,
-        filename=safe_name,
-        media_type="application/pdf",
-    )
+    candidates = [
+        EXPORTS_DIR / safe_name,
+        Path(tempfile.gettempdir()) / safe_name,
+        Path(tempfile.gettempdir()) / "comiccraft" / "exports" / safe_name,
+        BASE_DIR / "static" / "exports" / safe_name,
+    ]
+    for path in candidates:
+        if path.exists():
+            return FileResponse(
+                path=path,
+                filename=safe_name,
+                media_type="application/pdf",
+            )
+    raise HTTPException(status_code=404, detail="PDF file not found.")
+
+
+@router.get("/static/panels/{filename}")
+async def get_panel_image(filename: str):
+    safe_name = Path(filename).name
+    candidates = [
+        PANELS_DIR / safe_name,
+        Path(tempfile.gettempdir()) / safe_name,
+        Path(tempfile.gettempdir()) / "comiccraft" / "panels" / safe_name,
+        BASE_DIR / "static" / "panels" / safe_name,
+    ]
+    for path in candidates:
+        if path.exists():
+            return FileResponse(path=path, media_type="image/png")
+    raise HTTPException(status_code=404, detail="Panel image not found.")
 
 
 @router.get("/export-success", response_class=HTMLResponse)
 async def export_success(request: Request, pdf_name: str):
     return templates.TemplateResponse(
-        "export_success.html",
-        {"request": request, "pdf_name": Path(pdf_name).name},
+        request=request,
+        name="export_success.html",
+        context={"pdf_name": Path(pdf_name).name},
     )
 
 
 @router.get("/test-image")
 async def test_image(prompt: str = "A futuristic city at sunset, sci-fi, cinematic, comic art"):
     try:
-        image_path = generate_image(prompt, "test_image.png")
-        return {"message": "Image generated successfully", "path": image_path}
+        image_info = generate_image(prompt, "test_image.png")
+        return {"message": "Image generated successfully", "path": str(image_info)}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
