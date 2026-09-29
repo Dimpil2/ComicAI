@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: comiccraft-webapp
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEMO_MODE
+        value: "false"
+      - key: IMAGE_PROVIDER
+        value: "hf"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: HF_TOKEN
+        sync: false
