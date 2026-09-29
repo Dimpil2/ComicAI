@@ -3,35 +3,213 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ComicCraft</title>
+  <title>ComicCraft - AI Comic Story Creator</title>
   <style>
-    *{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;min-height:100vh;background:linear-gradient(135deg,#d8ecff,#f7f1ff 45%,#fff6df);color:#233044}
-    .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
-    .card{width:min(760px,100%);background:rgba(255,255,255,.95);border-radius:24px;padding:34px;box-shadow:0 18px 50px rgba(35,48,68,.15)}
-    h1{margin:0 0 8px;font-size:42px}.sub{margin:0 0 26px;color:#617089}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.full{grid-column:1/-1}
-    label{display:block;font-weight:700;margin-bottom:7px}.field{width:100%;border:1px solid #ccd6e5;border-radius:12px;padding:12px 14px;font-size:15px;background:#fff}
-    textarea.field{min-height:130px;resize:vertical}.button{margin-top:20px;width:100%;padding:14px;border:0;border-radius:12px;font-size:16px;font-weight:700;background:#2f6fed;color:#fff;cursor:pointer}.button:hover{filter:brightness(.96)}
-    .note{margin-top:14px;font-size:13px;color:#6f7e93}.pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef4ff;color:#2f6fed;font-size:12px;font-weight:700}
-    @media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:auto}h1{font-size:34px}}
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.4)),
+                  url("https://images.unsplash.com/photo-1426604966848-d7adac402bff?auto=format&fit=crop&w=1920&q=80") center/cover no-repeat fixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 16px;
+      color: #1e293b;
+    }
+    .form-card {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      width: 100%;
+      max-width: 580px;
+      border-radius: 16px;
+      padding: 36px 32px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    }
+    .card-title {
+      text-align: center;
+      font-size: 26px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      color: #1e293b;
+      margin-bottom: 7px;
+    }
+    .input-field, .select-field, .textarea-field {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1e293b;
+      background-color: #ffffff;
+      outline: none;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .input-field:focus, .select-field:focus, .textarea-field:focus {
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+    }
+    .character-input {
+      background-color: #f0f4fa;
+    }
+    .textarea-field {
+      min-height: 110px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+    .btn-submit {
+      width: 100%;
+      background: #0d6efd;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s ease, transform 0.1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-submit:hover {
+      background: #0b5ed7;
+    }
+    .btn-submit:active {
+      transform: scale(0.99);
+    }
+    .loading-overlay {
+      display: none;
+      text-align: center;
+      margin-top: 15px;
+      font-size: 14px;
+      color: #0d6efd;
+      font-weight: 600;
+    }
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(13, 110, 253, 0.3);
+      border-radius: 50%;
+      border-top-color: #0d6efd;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (max-width: 480px) {
+      .form-card {
+        padding: 24px 20px;
+      }
+      .card-title {
+        font-size: 22px;
+      }
+    }
   </style>
 </head>
 <body>
-<div class="hero"><div class="card">
-  <span class="pill">AI COMIC STORY CREATOR</span>
-  <h1>Create Your Comic</h1>
-  <p class="sub">Turn one story idea into five illustrated comic panels, narration, dialogue, and a PDF.</p>
-  <form method="post" action="/generate">
-    <div class="grid">
-      <div class="full"><label for="prompt">Story Prompt</label><textarea class="field" id="prompt" name="prompt" required placeholder="A brave fox exploring an enchanted forest..."></textarea></div>
-      <div><label for="character_name">Main Character Name</label><input class="field" id="character_name" name="character_name" value="Aria" required></div>
-      <div><label for="setting">Setting</label><select class="field" id="setting" name="setting"><option>forest</option><option>school</option><option>city</option><option>space</option><option>village</option></select></div>
-      <div><label for="tone">Story Tone</label><select class="field" id="tone" name="tone"><option>light-hearted</option><option selected>dramatic</option><option>poetic</option><option>funny</option></select></div>
-      <div><label for="style">Art Style</label><select class="field" id="style" name="style"><option>anime</option><option>pixel art</option><option selected>comic book</option><option>realistic</option></select></div>
-    </div>
-    <button class="button" type="submit">Generate My Comic</button>
-  </form>
-  <div class="note">Tip: the first launch can run in demo mode. Add your API keys in <code>.env</code> when you are ready for AI generation.</div>
-</div></div>
+
+  <div class="form-card">
+    <h1 class="card-title">✏️ Create Your Comic</h1>
+
+    <form id="comicForm" method="post" action="/generate">
+      <div class="form-group">
+        <label for="prompt">Story Prompt:</label>
+        <textarea 
+          class="textarea-field" 
+          id="prompt" 
+          name="prompt" 
+          required 
+          placeholder="A brave fox explores an enchanted forest."
+        >A brave fox explores an enchanted forest.</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="character_name">Main Character Name:</label>
+        <input 
+          class="input-field character-input" 
+          type="text" 
+          id="character_name" 
+          name="character_name" 
+          value="Free" 
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="setting">Setting:</label>
+        <select class="select-field" id="setting" name="setting">
+          <option value="forest" selected>Forest</option>
+          <option value="school">School</option>
+          <option value="city">City</option>
+          <option value="space">Space</option>
+          <option value="village">Village</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="tone">Story Tone:</label>
+        <select class="select-field" id="tone" name="tone">
+          <option value="dramatic" selected>Dramatic</option>
+          <option value="funny">Funny</option>
+          <option value="light-hearted">Light-hearted</option>
+          <option value="poetic">Poetic</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="style">Art Style:</label>
+        <select class="select-field" id="style" name="style">
+          <option value="realistic" selected>Realistic</option>
+          <option value="comic book">Comic Book</option>
+          <option value="anime">Anime</option>
+          <option value="pixel art">Pixel Art</option>
+        </select>
+      </div>
+
+      <button class="btn-submit" type="submit" id="submitBtn">Generate Comic</button>
+
+      <div class="loading-overlay" id="loadingOverlay">
+        <span class="spinner"></span> Generating AI storyline, narration & illustrations... Please wait!
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('comicForm');
+    const btn = document.getElementById('submitBtn');
+    const loading = document.getElementById('loadingOverlay');
+
+    form.addEventListener('submit', function() {
+      btn.disabled = true;
+      btn.style.opacity = '0.7';
+      btn.innerText = 'Creating Comic...';
+      loading.style.display = 'block';
+    });
+  </script>
+
 </body>
 </html>

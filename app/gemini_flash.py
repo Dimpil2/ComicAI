@@ -7,27 +7,44 @@ from .gemini_client import generate_text
 
 
 def _demo_outline(user_prompt: str) -> list[dict]:
-    # Keeps the full application testable before API keys are configured.
-    titles = [
-        "The Beginning",
-        "Into the Unknown",
-        "A Sudden Challenge",
-        "The Turning Point",
-        "A New Dawn",
+    """Generates an engaging, contextual 5-panel outline for demo and test modes."""
+    # Context-aware panel titles and progression
+    panels_data = [
+        (
+            "The Threshold of Adventure",
+            f"The journey begins as the scene sets the atmosphere for: {user_prompt}.",
+            f"Comic book illustration, wide establishing shot, {user_prompt}, cinematic composition, vivid lighting, detailed setting, clean line art."
+        ),
+        (
+            "Into the Unknown",
+            f"The main character steps deeper into the setting, noticing unfamiliar details and rising anticipation.",
+            f"Comic book panel, medium shot, character exploring the environment, atmospheric lighting, detailed background, dynamic angle."
+        ),
+        (
+            "A Sudden Discovery",
+            f"A surprising anomaly or mysterious encounter challenges the path ahead and heightens the stakes.",
+            f"Comic illustration, dramatic close-up, glowing elements, expressive character reaction, high contrast shadows, comic book style."
+        ),
+        (
+            "The Turning Point",
+            f"Facing the central revelation, courage and quick thinking turn uncertainty into action.",
+            f"Dynamic action comic panel, intense color palette, expressive hero pose, impactful lighting, detailed scene."
+        ),
+        (
+            "A New Dawn",
+            f"The immediate challenge is resolved, leading to a satisfying conclusion and the promise of future adventures.",
+            f"Heroic resolution panel, warm golden hour lighting, wide cinematic frame, triumphant character expression, masterwork art."
+        ),
     ]
+
     results = []
-    for i, title in enumerate(titles, start=1):
+    for i, (title, desc, img_prompt) in enumerate(panels_data, start=1):
         results.append(
             {
                 "panel": i,
-                "title": title,
-                "scene_description": (
-                    f"A comic-book scene for panel {i}, continuing the story idea: {user_prompt}."
-                ),
-                "image_prompt": (
-                    f"comic book illustration, panel {i}, {user_prompt}, cinematic composition, "
-                    "expressive characters, detailed environment, vivid lighting, clean line art"
-                ),
+                "title": f"Panel {i}: {title}",
+                "scene_description": desc,
+                "image_prompt": img_prompt,
             }
         )
     return results
@@ -73,10 +90,18 @@ Respond ONLY with valid JSON. Do not wrap it in markdown fences.
     for index, panel in enumerate(data, start=1):
         if not isinstance(panel, dict) or not required.issubset(panel):
             raise ValueError(f"Invalid panel structure at panel {index}.")
+        
+        # Ensure clean title without double 'Panel N:' prefixes
+        raw_title = str(panel["title"]).strip()
+        if raw_title.lower().startswith(f"panel {index}"):
+            clean_title = raw_title
+        else:
+            clean_title = f"Panel {index}: {raw_title}"
+
         normalized.append(
             {
                 "panel": index,
-                "title": str(panel["title"]).strip(),
+                "title": clean_title,
                 "scene_description": str(panel["scene_description"]).strip(),
                 "image_prompt": str(panel["image_prompt"]).strip(),
             }

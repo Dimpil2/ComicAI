@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import base64
+import math
+import random
 import re
 from io import BytesIO
 from pathlib import Path
@@ -38,7 +40,10 @@ def sanitize_filename(text: str) -> str:
 
 def _load_font(size: int):
     candidates = [
+        Path("C:/Windows/Fonts/arialbd.ttf"),
         Path("C:/Windows/Fonts/arial.ttf"),
+        Path("C:/Windows/Fonts/segoeui.ttf"),
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
         Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
     ]
     for candidate in candidates:
@@ -50,17 +55,89 @@ def _load_font(size: int):
     return ImageFont.load_default()
 
 
+def _get_theme_palette(prompt: str) -> tuple[tuple[int, int, int], tuple[int, int, int], tuple[int, int, int]]:
+    """Determine dynamic visual theme colors based on scene keywords."""
+    p = prompt.lower()
+    if any(w in p for w in ["forest", "tree", "woods", "nature", "jungle", "fox"]):
+        return ((20, 50, 35), (42, 110, 75), (240, 180, 70))
+    elif any(w in p for w in ["space", "star", "alien", "galaxy", "nebula", "planet"]):
+        return ((15, 18, 45), (45, 30, 90), (100, 220, 255))
+    elif any(w in p for w in ["city", "cyber", "neon", "skyscraper", "street"]):
+        return ((25, 20, 48), (85, 35, 95), (255, 105, 180))
+    elif any(w in p for w in ["school", "classroom", "student", "teacher", "science"]):
+        return ((30, 55, 80), (60, 115, 160), (255, 210, 80))
+    else:
+        # Default warm adventure palette
+        return ((35, 45, 60), (70, 95, 130), (255, 170, 60))
+
+
 def _demo_image(prompt: str, filename: str) -> GeneratedImage:
-    image = Image.new("RGB", (768, 512), (235, 242, 250))
-    draw = ImageDraw.Draw(image)
-    title_font = _load_font(28)
-    body_font = _load_font(18)
-    draw.rounded_rectangle((30, 30, 738, 482), radius=24, outline=(45, 72, 100), width=4)
-    draw.text((55, 55), "ComicCraft Demo Panel", font=title_font, fill=(30, 42, 55))
-    text = prompt[:420]
-    draw.multiline_text((55, 120), text, font=body_font, fill=(50, 60, 70), spacing=8)
-    draw.text((55, 420), "Set IMAGE_PROVIDER=hf or diffusers for AI images.", font=body_font, fill=(70, 80, 95))
+    """Generate a stylized visual comic panel placeholder."""
+    width, height = 768, 512
+    top_color, mid_color, accent_color = _get_theme_palette(prompt)
     
+    # Create gradient background
+    image = Image.new("RGB", (width, height), top_color)
+    draw = ImageDraw.Draw(image)
+
+    # Vertical linear gradient
+    for y in range(height):
+        ratio = y / height
+        r = int(top_color[0] * (1 - ratio) + mid_color[0] * ratio)
+        g = int(top_color[1] * (1 - ratio) + mid_color[1] * ratio)
+        b = int(top_color[2] * (1 - ratio) + mid_color[2] * ratio)
+        draw.line([(0, y), (width, y)], fill=(r, g, b))
+
+    # Add comic atmospheric details
+    for _ in range(35):
+        cx = random.randint(30, width - 30)
+        cy = random.randint(30, height - 120)
+        cr = random.randint(2, 6)
+        draw.ellipse((cx - cr, cy - cr, cx + cr, cy + cr), fill=(accent_color[0], accent_color[1], accent_color[2], 120))
+
+    # Outer comic panel frame
+    draw.rectangle((16, 16, width - 16, height - 16), outline=(255, 255, 255), width=3)
+    draw.rectangle((20, 20, width - 20, height - 20), outline=(15, 23, 42), width=2)
+
+    # Header banner badge
+    title_font = _load_font(24)
+    body_font = _load_font(15)
+    badge_font = _load_font(13)
+
+    # Top-left badge
+    draw.rounded_rectangle((36, 32, 220, 68), radius=8, fill=(15, 23, 42))
+    draw.text((48, 42), "COMICCRAFT AI", font=badge_font, fill=accent_color)
+
+    # Title
+    draw.text((40, 90), "Illustrated Scene", font=title_font, fill=(255, 255, 255))
+
+    # Story & visual prompt description
+    clean_text = prompt.replace("\n", " ").strip()
+    if len(clean_text) > 280:
+        clean_text = clean_text[:277] + "..."
+
+    # Semi-transparent text card overlay at the bottom
+    draw.rounded_rectangle((36, height - 170, width - 36, height - 36), radius=12, fill=(10, 15, 28))
+    draw.rectangle((36, height - 170, width - 36, height - 36), outline=(60, 80, 110), width=1)
+    
+    # Prompt text inside card
+    # Word wrap text
+    words = clean_text.split()
+    lines = []
+    current_line = []
+    for word in words:
+        current_line.append(word)
+        if len(" ".join(current_line)) > 72:
+            lines.append(" ".join(current_line[:-1]))
+            current_line = [word]
+    if current_line:
+        lines.append(" ".join(current_line))
+
+    y_text = height - 154
+    for line in lines[:4]:
+        draw.text((54, y_text), line, font=body_font, fill=(230, 240, 255))
+        y_text += 24
+
     path = PANELS_DIR / filename
     try:
         image.save(path, format="PNG")
