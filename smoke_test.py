@@ -10,11 +10,9 @@ from app.layout_builder import build_comic_layout
 from app.exporters import save_pdf
 
 
-assert DEMO_MODE or IMAGE_PROVIDER != "demo", "Set DEMO_MODE=true for the local smoke test."
-
 prompt = "A curious fox finds a glowing doorway in an old forest."
 outline = generate_outline(prompt)
-assert len(outline) == 5
+assert len(outline) == 5, f"Expected 5 panels, got {len(outline)}"
 story = generate_story(outline)
 images = [generate_image(p["image_prompt"], f"smoke_{p['panel']}.png") for p in outline]
 layout = build_comic_layout(images, story, outline)

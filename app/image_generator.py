@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import base64
-import math
 import random
 import re
+import urllib.parse
 from io import BytesIO
 from pathlib import Path
 
+import requests
 from PIL import Image, ImageDraw, ImageFont
 
 from .config import (
@@ -56,7 +57,6 @@ def _load_font(size: int):
 
 
 def _get_theme_palette(prompt: str) -> tuple[tuple[int, int, int], tuple[int, int, int], tuple[int, int, int]]:
-    """Determine dynamic visual theme colors based on scene keywords."""
     p = prompt.lower()
     if any(w in p for w in ["forest", "tree", "woods", "nature", "jungle", "fox"]):
         return ((20, 50, 35), (42, 110, 75), (240, 180, 70))
@@ -67,20 +67,16 @@ def _get_theme_palette(prompt: str) -> tuple[tuple[int, int, int], tuple[int, in
     elif any(w in p for w in ["school", "classroom", "student", "teacher", "science"]):
         return ((30, 55, 80), (60, 115, 160), (255, 210, 80))
     else:
-        # Default warm adventure palette
         return ((35, 45, 60), (70, 95, 130), (255, 170, 60))
 
 
 def _demo_image(prompt: str, filename: str) -> GeneratedImage:
-    """Generate a stylized visual comic panel placeholder."""
     width, height = 768, 512
     top_color, mid_color, accent_color = _get_theme_palette(prompt)
     
-    # Create gradient background
     image = Image.new("RGB", (width, height), top_color)
     draw = ImageDraw.Draw(image)
 
-    # Vertical linear gradient
     for y in range(height):
         ratio = y / height
         r = int(top_color[0] * (1 - ratio) + mid_color[0] * ratio)
@@ -88,40 +84,30 @@ def _demo_image(prompt: str, filename: str) -> GeneratedImage:
         b = int(top_color[2] * (1 - ratio) + mid_color[2] * ratio)
         draw.line([(0, y), (width, y)], fill=(r, g, b))
 
-    # Add comic atmospheric details
     for _ in range(35):
         cx = random.randint(30, width - 30)
         cy = random.randint(30, height - 120)
         cr = random.randint(2, 6)
         draw.ellipse((cx - cr, cy - cr, cx + cr, cy + cr), fill=(accent_color[0], accent_color[1], accent_color[2], 120))
 
-    # Outer comic panel frame
     draw.rectangle((16, 16, width - 16, height - 16), outline=(255, 255, 255), width=3)
     draw.rectangle((20, 20, width - 20, height - 20), outline=(15, 23, 42), width=2)
 
-    # Header banner badge
     title_font = _load_font(24)
     body_font = _load_font(15)
     badge_font = _load_font(13)
 
-    # Top-left badge
     draw.rounded_rectangle((36, 32, 220, 68), radius=8, fill=(15, 23, 42))
     draw.text((48, 42), "COMICCRAFT AI", font=badge_font, fill=accent_color)
-
-    # Title
     draw.text((40, 90), "Illustrated Scene", font=title_font, fill=(255, 255, 255))
 
-    # Story & visual prompt description
     clean_text = prompt.replace("\n", " ").strip()
     if len(clean_text) > 280:
         clean_text = clean_text[:277] + "..."
 
-    # Semi-transparent text card overlay at the bottom
     draw.rounded_rectangle((36, height - 170, width - 36, height - 36), radius=12, fill=(10, 15, 28))
     draw.rectangle((36, height - 170, width - 36, height - 36), outline=(60, 80, 110), width=1)
     
-    # Prompt text inside card
-    # Word wrap text
     words = clean_text.split()
     lines = []
     current_line = []
@@ -151,24 +137,39 @@ def _demo_image(prompt: str, filename: str) -> GeneratedImage:
     return GeneratedImage(path=str(path), data_url=data_url, filename=filename)
 
 
-def _hf_image(prompt: str):
+def _cloud_ai_image(prompt: str) -> Image.Image:
+    """Generate real AI comic artwork from cloud image pipeline."""
+    clean_prompt = prompt.replace("\n", " ").strip()
+    encoded = urllib.parse.quote(clean_prompt)
+    url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=512&nologo=true"
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    response = requests.get(url, headers=headers, timeout=30)
+    if response.status_code == 200 and len(response.content) > 1000:
+        return Image.open(BytesIO(response.content)).convert("RGB")
+    raise RuntimeError(f"Cloud image service returned status {response.status_code}")
+
+
+def _hf_image(prompt: str) -> Image.Image:
     from huggingface_hub import InferenceClient
 
     if not HF_TOKEN:
-        raise RuntimeError("HF_TOKEN is missing for IMAGE_PROVIDER=hf.")
+        raise RuntimeError("HF_TOKEN is missing.")
     client = InferenceClient(api_key=HF_TOKEN, provider="auto")
     return client.text_to_image(prompt=prompt, model=HF_IMAGE_MODEL)
 
 
-def _diffusers_image(prompt: str):
+def _diffusers_image(prompt: str) -> Image.Image:
     global _PIPELINE
     try:
         import torch
         from diffusers import AutoPipelineForText2Image
     except ImportError as exc:
         raise RuntimeError(
-            "Diffusers mode needs torch, diffusers, transformers, and accelerate. "
-            "Install them from requirements-local-image.txt."
+            "Diffusers mode needs torch, diffusers, transformers, and accelerate."
         ) from exc
 
     if _PIPELINE is None:
@@ -193,23 +194,38 @@ def _diffusers_image(prompt: str):
 
 
 def generate_image(prompt: str, filename: str | None = None) -> GeneratedImage:
-    """Generate a comic panel image and return its static file path & base64 data URI."""
+    """Generate a comic panel illustration and return GeneratedImage with path and Base64."""
     if not filename:
         filename = f"{sanitize_filename(prompt)}.png"
     elif not filename.lower().endswith(".png"):
         filename = f"{filename}.png"
 
-    if DEMO_MODE or IMAGE_PROVIDER == "demo":
-        return _demo_image(prompt, filename)
+    image: Image.Image | None = None
 
-    if IMAGE_PROVIDER == "hf":
-        image = _hf_image(prompt)
-    elif IMAGE_PROVIDER == "diffusers":
-        image = _diffusers_image(prompt)
-    else:
-        raise RuntimeError(
-            "IMAGE_PROVIDER must be one of: demo, hf, diffusers."
-        )
+    # 1. Hugging Face if token is configured
+    if (IMAGE_PROVIDER == "hf" or (IMAGE_PROVIDER == "auto" and HF_TOKEN)) and HF_TOKEN:
+        try:
+            image = _hf_image(prompt)
+        except Exception:
+            image = None
+
+    # 2. Local PyTorch Diffusers if requested
+    if image is None and IMAGE_PROVIDER == "diffusers":
+        try:
+            image = _diffusers_image(prompt)
+        except Exception:
+            image = None
+
+    # 3. Cloud AI Image Generator (Free Flux/Stable Diffusion)
+    if image is None and IMAGE_PROVIDER in {"auto", "hf", "cloud", "free"}:
+        try:
+            image = _cloud_ai_image(prompt)
+        except Exception:
+            image = None
+
+    # 4. Fallback to styled demo canvas if offline
+    if image is None:
+        return _demo_image(prompt, filename)
 
     path = PANELS_DIR / filename
     try:

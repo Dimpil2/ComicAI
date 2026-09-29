@@ -12,16 +12,16 @@ load_dotenv(BASE_DIR / ".env")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 
-# Current model defaults. These keep the original Flash/Pro role split
-# while using currently available Gemini API model names.
-GEMINI_OUTLINE_MODEL = os.getenv("GEMINI_OUTLINE_MODEL", "gemini-2.5-flash").strip()
-GEMINI_STORY_MODEL = os.getenv("GEMINI_STORY_MODEL", "gemini-2.5-flash").strip()
+# Current Gemini model defaults
+GEMINI_OUTLINE_MODEL = os.getenv("GEMINI_OUTLINE_MODEL", "gemini-3.8-flash").strip()
+GEMINI_STORY_MODEL = os.getenv("GEMINI_STORY_MODEL", "gemini-3.8-flash").strip()
 
 # Image generation modes:
-#   demo     -> local placeholder images so the project runs without any image API
+#   auto     -> Real AI illustrations (HF when token present, Cloud AI generator, with demo fallback)
 #   hf       -> Hugging Face InferenceClient
 #   diffusers -> local Hugging Face Diffusers/Stable Diffusion pipeline
-IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "demo").strip().lower()
+#   demo     -> local canvas fallback
+IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "auto").strip().lower()
 HF_IMAGE_MODEL = os.getenv(
     "HF_IMAGE_MODEL", "stabilityai/stable-diffusion-2-1"
 ).strip()
@@ -29,7 +29,7 @@ LOCAL_DIFFUSION_MODEL = os.getenv(
     "LOCAL_DIFFUSION_MODEL", "stabilityai/stable-diffusion-2-1"
 ).strip()
 
-DEMO_MODE = os.getenv("DEMO_MODE", "true").strip().lower() in {
+DEMO_MODE = os.getenv("DEMO_MODE", "false" if GEMINI_API_KEY else "true").strip().lower() in {
     "1",
     "true",
     "yes",
