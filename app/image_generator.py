@@ -147,7 +147,7 @@ def _cloud_ai_image(prompt: str) -> Image.Image:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
-    response = requests.get(url, headers=headers, timeout=30)
+    response = requests.get(url, headers=headers, timeout=12)
     if response.status_code == 200 and len(response.content) > 1000:
         return Image.open(BytesIO(response.content)).convert("RGB")
     raise RuntimeError(f"Cloud image service returned status {response.status_code}")

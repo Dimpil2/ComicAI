@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import tempfile
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -45,10 +46,19 @@ def _generate_comic(full_prompt: str):
 
     story = generate_story(outline)
     uid = uuid.uuid4().hex[:8]
-    images = [
-        generate_image(panel["image_prompt"], f"panel_{panel['panel']}_{uid}.png")
-        for panel in outline
-    ]
+
+    # Parallel image generation across all 5 panels for 5x faster speed
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [
+            executor.submit(
+                generate_image,
+                panel["image_prompt"],
+                f"panel_{panel['panel']}_{uid}.png",
+            )
+            for panel in outline
+        ]
+        images = [f.result() for f in futures]
+
     layout = build_comic_layout(images, story, outline)
     pdf_path = save_pdf(layout)
     return layout, pdf_path
